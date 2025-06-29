@@ -652,6 +652,12 @@ AgentEvent = Annotated[
 ]
 """The union type of all built-in concrete subclasses of :class:`BaseAgentEvent`."""
 
+
+# __all__: 这是 Python 模块开发中的一种最佳实践，特别是在编写供他人使用的库时，它有助于维护清晰的 API 边界和接口稳定性。
+# 1. **控制公共 API** - 它明确定义了这个模块想要公开给外部使用的类和函数
+# 2. **限制通配符导入** - 当其他代码使用 `from autogen_agentchat.messages import *` 时，只有 列表中的名称会被导入，而不是模块中定义的所有名称 `__all__`
+# 3. **文档目的** - 它为库的使用者和维护者提供了一个清晰的列表，表明哪些是模块的公共接口
+# 4. **避免导入内部实现细节** - 它防止模块内部的辅助函数、变量或实现细节被意外导入
 __all__ = [
     "AgentEvent",
     "BaseMessage",
