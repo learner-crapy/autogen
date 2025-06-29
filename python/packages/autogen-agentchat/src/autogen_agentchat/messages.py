@@ -41,6 +41,14 @@ class BaseMessage(BaseModel, ABC):
         For :class:`BaseChatMessage` types, use :meth:`to_model_text` instead."""
         ...
 
+    '''
+    这段代码中的三个点 `...` 是 Python 中的特殊语法，表示一个抽象方法的占位符。在这个上下文中，它有以下含义：
+    1. **抽象方法标记** - 在抽象基类 (ABC) 中，`...` 用于表示一个必须由子类实现的方法。这是 Python 3.0+ 的官方语法，用于定义方法体为空的抽象方法。
+    2. **pass 的现代替代** - 在早期的 Python 版本中，通常使用 `pass` 关键字作为空方法体的占位符，但 `...` 作为 Python 的官方语法提供了更明确的含义，特别是在抽象方法中。
+    3. **实现要求** - 这个语法告诉子类的开发者：这个方法必须被重写，否则实例化该子类时会引发错误。
+    '''
+
+
     def dump(self) -> Mapping[str, Any]:
         """Convert the message to a JSON-serializable dictionary.
 
@@ -50,6 +58,14 @@ class BaseMessage(BaseModel, ABC):
         process or add additional fields to the output.
         """
         return self.model_dump()
+    '''
+    `Mapping` 是 `collections.abc` 模块中定义的一个抽象基类（ABC），它代表了键值对的集合，类似于字典
+    1. **只读接口**：`Mapping` 只提供访问操作，不包括修改操作（如 `__setitem__`）[[2]](https://realpython.com/python-mappings/)
+    2. **抽象性**：它是一个抽象接口，定义了所有映射类型都应该实现的方法，包括 `__getitem__`, `__contains__`, `keys()`, `items()`, `values()` 等
+    3. **比 `Dict` 更通用**：在类型提示中，`Mapping` 可以接受任何实现了映射接口的对象，而不仅仅是 `dict` 类型 [[3]](https://stackoverflow.com/questions/52487663/python-type-hints-typing-mapping-vs-typing-dict)
+
+    '''
+
 
     @classmethod
     def load(cls, data: Mapping[str, Any]) -> Self:
@@ -60,6 +76,9 @@ class BaseMessage(BaseModel, ABC):
         Override this method if you want to customize the deserialization
         process or add additional fields to the input data."""
         return cls.model_validate(data)
+    '''
+    model_validate 是继承自 pydantic 的 BaseModel
+    '''
 
 
 class BaseChatMessage(BaseMessage, ABC):
@@ -76,6 +95,10 @@ class BaseChatMessage(BaseMessage, ABC):
     conversation. Agents are expected to process the content of the
     message using models and return a response as another :class:`BaseChatMessage`.
     """
+
+    '''
+    agent-to-agent, 难道StructuredMessage不适合在agent之间通信吗？
+    '''
 
     source: str
     """The name of the agent that sent this message."""
@@ -103,6 +126,19 @@ class BaseChatMessage(BaseMessage, ABC):
         for the model client.
         """
         ...
+    '''
+    这个to_model_text用于结构化，结构化部分信息？
+    这个方法有以下特点：
+    1. **转换为纯文本**：它将消息内容转换为纯文本表示形式，这是因为许多语言模型接受的是纯文本输入。
+    2. **用于模型输入**：这个方法生成的文本是专门用于发送给语言模型的，而不是用于控制台显示。
+    3. **部分而非整体**：它只负责转换消息的内容部分，而不是创建完整的模型消息。这些转换后的文本可能成为发送给模型的消息的一部分。
+    
+    ### 与其他方法的区别
+    文档中提到了两个相关但不同的方法：
+    1. **`to_text`**：用于控制台显示和用户查看，面向人类阅读。
+    2. **`to_model_message`**：用于创建完整的模型消息，而不仅仅是内容部分。这可能包括消息类型、角色、元数据等
+
+    '''
 
     @abstractmethod
     def to_model_message(self) -> UserMessage:
@@ -128,6 +164,8 @@ class BaseTextChatMessage(BaseChatMessage, ABC):
 
     def to_model_text(self) -> str:
         return self.content
+
+    # 你这里全部返回content，有啥区别呢！
 
     def to_model_message(self) -> UserMessage:
         return UserMessage(content=self.content, source=self.source)
@@ -155,6 +193,11 @@ class BaseAgentEvent(BaseMessage, ABC):
     models_usage: RequestUsage | None = None
     """The model client usage incurred when producing this message."""
 
+    '''
+    1. **类型注解中的 `None`**: `RequestUsage | None` 中的 `None` 是类型的一部分，它告诉类型检查器（如 mypy、PyCharm 等）这个变量可以是 `None` 值。
+    2. **赋值中的 `None`**: `= None` 中的 `None` 是实际赋给变量的默认值。
+    '''
+
     metadata: Dict[str, str] = {}
     """Additional metadata about the message."""
 
@@ -165,6 +208,55 @@ class BaseAgentEvent(BaseMessage, ABC):
 StructuredContentType = TypeVar("StructuredContentType", bound=BaseModel, covariant=True)
 """Type variable for structured content types."""
 
+'''
+1. **TypeVar**：这是 Python `typing` 模块中的一个工具，用于创建泛型类型变量。
+2. **"StructuredContentType"**：这是类型变量的名称，通常作为第一个参数传递给 `TypeVar`。
+3. **bound=BaseModel**：这个参数限制了这个类型变量只能是 `BaseModel` 或其子类。`BaseModel` 很可能是来自 Pydantic 库的基类，用于创建可验证的数据模型。
+4. **covariant=True**：这表示该类型变量是协变的（covariant）。
+
+'''
+
+'''
+`Generic` 是一个特殊的类，用于创建参数化的类型，允许类根据不同的类型参数表现出不同的行为，同时保持类型安全。简单来说，它让你可以创建能够处理不同类型的容器类，并在类型检查时保持类型信息。
+from typing import Generic, TypeVar
+
+T = TypeVar('T')  # 定义一个类型变量
+
+class Box(Generic[T]):
+    def __init__(self, content: T):
+        self.content = content
+    
+    def get_content(self) -> T:
+        return self.content
+# 在这个例子中：
+# - `Box` 是一个泛型类，可以包含任何类型的内容
+# - 当创建 `Box` 实例时，类型检查器会跟踪内容的类型
+'''
+
+# 这里 `StructuredMessage` 是一个泛型类，它可以处理任何 `BaseModel` 的子类作为内容
+'''
+class UserProfile(BaseModel):
+    name: str
+    age: int
+
+# 创建一个包含 UserProfile 的消息
+user_message = StructuredMessage[UserProfile](content=UserProfile(name="Alice", age=30))
+当我们写 `StructuredMessage[UserProfile]` 时，我们是在做以下操作：
+1. 选择泛型类 `StructuredMessage`
+2. 用具体类型 `UserProfile` 替换泛型参数 `StructuredContentType`
+3. 生成一个新的、特定于 `UserProfile` 的类型
+
+'''
+# 为啥不实用Any
+'''
+## Any 的问题
+`Any` 类型本质上是关闭类型检查的一种方式。当你使用 `Any` 时：
+1. **丢失类型安全**：编译器/类型检查器无法检测类型错误
+2. **缺少代码补全**：IDE 无法提供准确的自动补全建议
+3. **文档不明确**：代码阅读者无法知道实际预期的类型
+4. **错误传播**：`Any` 类型会"感染"其他变量，导致更多类型信息丢失
+
+'''
 
 class StructuredMessage(BaseChatMessage, Generic[StructuredContentType]):
     """A :class:`BaseChatMessage` type with an unspecified content type.
@@ -224,6 +316,18 @@ class StructuredMessage(BaseChatMessage, Generic[StructuredContentType]):
     human-readable representation of the message.
     This setting is experimental and will change in the future.
     """
+
+    '''
+    `@computed_field` 是 Pydantic 中的一个装饰器，用于在 Pydantic 模型中创建计算属性（computed properties）。这些属性会：
+    1. 根据模型中其他字段的值动态计算
+    2. 包含在模型的序列化输出中
+    3. 包含在模型的 JSON Schema 中
+    虽然 `@computed_field` 类似于 Python 的 `@property` 装饰器，但有几个重要区别：
+    1. `@computed_field` 装饰的属性会包含在模型的 JSON 输出中
+    2. 它们会被包含在模型的 JSON Schema 中
+    3. 可以配置额外参数，如 `return_type`、`alias` 等
+
+    '''
 
     @computed_field
     def type(self) -> str:
@@ -592,7 +696,12 @@ class MessageFactory:
         self._message_types[SelectSpeakerEvent.__name__] = SelectSpeakerEvent
         self._message_types[CodeGenerationEvent.__name__] = CodeGenerationEvent
         self._message_types[CodeExecutionEvent.__name__] = CodeExecutionEvent
+    '''
+    1. `self._message_types` - 这是一个字典属性，用于存储消息类型的映射关系
+    2. `CodeExecutionEvent.__name__` - 获取类 `CodeExecutionEvent` 的名称作为字典的键
+    3. `CodeExecutionEvent` - 类本身作为字典的值
 
+    '''
     def is_registered(self, message_type: type[BaseAgentEvent | BaseChatMessage]) -> bool:
         """Check if a message type is registered with the factory."""
         # Get the class name of the message type.
